@@ -1,270 +1,215 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Star, ThumbsUp, MessageCircle, Filter, TrendingUp, Award } from 'lucide-react';
 import { mockBooks, mockReviews } from '../../data/mockData';
 
 const ReviewsPage: React.FC = () => {
+  // 탭: 리뷰 / 추천
   const [activeTab, setActiveTab] = useState<'reviews' | 'recommendations'>('reviews');
-  const [sortBy, setSortBy] = useState('latest');
-  const [filterRating, setFilterRating] = useState('all');
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, index) => (
+  // 필터/정렬
+  const [sortBy, setSortBy] = useState<'latest' | 'helpful' | 'rating'>('latest');
+  const [filterRating, setFilterRating] = useState<'all' | '5' | '4' | '3'>('all');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // 리뷰 별 아이콘 렌더
+  const renderStars = (rating: number) =>
+    Array.from({ length: 5 }, (_, idx) => (
       <Star
-        key={index}
+        key={idx}
         className={`w-4 h-4 ${
-          index < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+          idx < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
         }`}
       />
     ));
-  };
 
-  const filteredReviews = mockReviews.filter(review => {
-    if (filterRating === 'all') return true;
-    return review.rating >= parseInt(filterRating);
-  });
-
-  const topRatedBooks = [...mockBooks]
-    .sort((a, b) => b.rating - a.rating)
-    .slice(0, 6);
+  // 가공 데이터
+  const filteredReviews = useMemo(() => {
+    let list = [...mockReviews];
+    if (filterRating !== 'all') {
+      const thr = Number(filterRating);
+      list = list.filter((r) => r.rating >= thr);
+    }
+    switch (sortBy) {
+      case 'helpful':
+        list.sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0));
+        break;
+      case 'rating':
+        list.sort((a, b) => b.rating - a.rating);
+        break;
+      default:
+        // latest
+        list.sort((a, b) => +new Date(b.date) - +new Date(a.date));
+    }
+    return list;
+  }, [sortBy, filterRating]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">리뷰 & 추천</h1>
-          <p className="text-gray-600">다른 독자들의 솔직한 리뷰와 추천 도서를 확인하세요</p>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">리뷰 & 추천</h1>
+        <button
+          onClick={() => setShowFilters((v) => !v)}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          <Filter className="w-4 h-4" />
+          고급 필터
+        </button>
+      </div>
+      <p className="mt-1 text-gray-600">다른 독자들의 리뷰와 추천 도서를 확인해보세요.</p>
+
+      {/* 상단 탭 */}
+      <div className="mt-6 flex gap-2">
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`rounded-lg px-4 py-2 text-sm ${
+            activeTab === 'reviews'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          리뷰
+        </button>
+        <button
+          onClick={() => setActiveTab('recommendations')}
+          className={`rounded-lg px-4 py-2 text-sm ${
+            activeTab === 'recommendations'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          추천
+        </button>
+      </div>
+
+      {/* 🔧 기본 필터 바 (여기 select에 스타일 강제 적용) */}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        {/* 평점 필터 */}
+        <div className="relative">
+          <select
+            value={filterRating}
+            onChange={(e) => setFilterRating(e.target.value as any)}
+            className="w-40 appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-gray-900 outline-none ring-blue-500 focus:ring"
+          >
+            <option value="all">모든 평점</option>
+            <option value="5">5점</option>
+            <option value="4">4점 이상</option>
+            <option value="3">3점 이상</option>
+          </select>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+            ▾
+          </span>
         </div>
 
-        {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center space-x-3">
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <Star className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">전체 리뷰</p>
-                <p className="text-2xl font-bold text-gray-900">{mockReviews.length}개</p>
-              </div>
+        {/* 정렬 */}
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="w-40 appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-gray-900 outline-none ring-blue-500 focus:ring"
+          >
+            <option value="latest">최신순</option>
+            <option value="helpful">도움순</option>
+            <option value="rating">평점순</option>
+          </select>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+            ▾
+          </span>
+        </div>
+      </div>
+
+      {/* 🔧 확장 필터 (토글) */}
+      {showFilters && (
+        <div className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-200 bg-white p-4 md:grid-cols-3">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">카테고리</label>
+            <div className="relative">
+              <select className="w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-gray-900 outline-none ring-blue-500 focus:ring">
+                <option>전체</option>
+                <option>문학</option>
+                <option>IT/프로그래밍</option>
+                <option>경제/경영</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">▾</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">평균 평점</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {(mockReviews.reduce((sum, review) => sum + review.rating, 0) / mockReviews.length).toFixed(1)}
-                </p>
-              </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">기간</label>
+            <div className="relative">
+              <select className="w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-gray-900 outline-none ring-blue-500 focus:ring">
+                <option>전체</option>
+                <option>이번 주</option>
+                <option>이번 달</option>
+                <option>올해</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">▾</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex items-center space-x-3">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Award className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">추천 도서</p>
-                <p className="text-2xl font-bold text-gray-900">{topRatedBooks.length}권</p>
-              </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">정렬 기준</label>
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full appearance-none rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-gray-900 outline-none ring-blue-500 focus:ring"
+              >
+                <option value="latest">최신순</option>
+                <option value="helpful">도움순</option>
+                <option value="rating">평점순</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">▾</span>
             </div>
           </div>
         </div>
+      )}
 
-        {/* 탭 메뉴 */}
-        <div className="bg-white rounded-xl shadow-md mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
-              <button
-                onClick={() => setActiveTab('reviews')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'reviews'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                사용자 리뷰
-              </button>
-              <button
-                onClick={() => setActiveTab('recommendations')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'recommendations'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                추천 도서
-              </button>
-            </nav>
-          </div>
-
-          {activeTab === 'reviews' && (
-            <div className="p-6">
-              {/* 필터 및 정렬 */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex items-center space-x-2">
-                  <Filter className="w-5 h-5 text-gray-400" />
-                  <select
-                    value={filterRating}
-                    onChange={(e) => setFilterRating(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="all">모든 평점</option>
-                    <option value="5">5점</option>
-                    <option value="4">4점 이상</option>
-                    <option value="3">3점 이상</option>
-                  </select>
+      {/* 콘텐츠 */}
+      <div className="mt-8">
+        {activeTab === 'reviews' ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {filteredReviews.map((r) => (
+              <div key={r.id} className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">{renderStars(r.rating)}</div>
+                  <span className="text-xs text-gray-500">
+                    {new Date(r.date).toLocaleDateString('ko-KR')}
+                  </span>
                 </div>
-
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="latest">최신순</option>
-                  <option value="rating">평점순</option>
-                  <option value="likes">좋아요순</option>
-                </select>
+                <h3 className="mt-2 text-lg font-semibold text-gray-900">{r.title}</h3>
+                <p className="mt-1 text-sm text-gray-700">{r.content}</p>
+                <div className="mt-3 flex items-center gap-4 text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-1">
+                    <ThumbsUp className="w-4 h-4" />
+                    {r.likes ?? 0}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <MessageCircle className="w-4 h-4" />
+                    {r.comments ?? 0}
+                  </span>
+                </div>
               </div>
-
-              {/* 리뷰 목록 */}
-              <div className="space-y-6">
-                {filteredReviews.map((review) => {
-                  const book = mockBooks.find(b => b.id === review.bookId);
-                  return (
-                    <div key={review.id} className="border border-gray-200 rounded-lg p-6">
-                      <div className="flex items-start space-x-4">
-                        {book && (
-                          <img 
-                            src={book.coverImage} 
-                            alt={book.title}
-                            className="w-16 h-20 object-cover rounded-lg"
-                          />
-                        )}
-                        
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h3 className="font-semibold text-gray-900 mb-1">
-                                {book?.title}
-                              </h3>
-                              <div className="flex items-center space-x-2 mb-2">
-                                <span className="text-sm text-gray-600">{review.userName}</span>
-                                <span className="text-gray-300">•</span>
-                                <span className="text-sm text-gray-500">
-                                  {new Date(review.date).toLocaleDateString('ko-KR')}
-                                </span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                {renderStars(review.rating)}
-                                <span className="text-sm text-gray-600 ml-2">
-                                  {review.rating}.0
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <p className="text-gray-700 mb-4 leading-relaxed">
-                            {review.comment}
-                          </p>
-                          
-                          <div className="flex items-center space-x-4">
-                            <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors duration-200">
-                              <ThumbsUp className="w-4 h-4" />
-                              <span className="text-sm">도움됨 ({review.likes})</span>
-                            </button>
-                            <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors duration-200">
-                              <MessageCircle className="w-4 h-4" />
-                              <span className="text-sm">댓글</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+            ))}
+          </div>
+        ) : (
+          // recommendations
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {mockBooks.slice(0, 9).map((b) => (
+              <div key={b.id} className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm text-gray-700">{b.category}</span>
+                </div>
+                <div className="font-semibold text-gray-900">{b.title}</div>
+                <div className="text-sm text-gray-600">저자: {b.author}</div>
+                <div className="mt-2 inline-flex items-center gap-1 text-sm text-gray-600">
+                  <TrendingUp className="w-4 h-4" />
+                  추천 지수 {b.rating.toFixed(1)}
+                </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'recommendations' && (
-            <div className="p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">이달의 추천 도서</h2>
-                <p className="text-gray-600">높은 평점을 받은 도서들을 추천합니다</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {topRatedBooks.map((book, index) => (
-                  <div key={book.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow duration-300">
-                    <div className="relative mb-4">
-                      <img 
-                        src={book.coverImage} 
-                        alt={book.title}
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
-                      <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                        #{index + 1}
-                      </div>
-                      <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full flex items-center space-x-1">
-                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs font-medium">{book.rating}</span>
-                      </div>
-                    </div>
-                    
-                    <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1">
-                      {book.title}
-                    </h3>
-                    
-                    <p className="text-gray-600 text-sm mb-2">
-                      {book.author} · {book.publisher}
-                    </p>
-                    
-                    <p className="text-gray-700 text-sm line-clamp-3 mb-4">
-                      {book.description}
-                    </p>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        {renderStars(Math.floor(book.rating))}
-                        <span className="text-sm text-gray-600 ml-1">
-                          ({book.reviewCount})
-                        </span>
-                      </div>
-                      
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        book.isAvailable 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {book.isAvailable ? '대여가능' : '대여중'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 리뷰 작성 CTA */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-8 text-center text-white">
-          <h2 className="text-2xl font-bold mb-4">
-            읽은 책에 대한 리뷰를 남겨주세요!
-          </h2>
-          <p className="text-blue-100 mb-6">
-            다른 독자들에게 도움이 되는 솔직한 리뷰를 작성해보세요.
-          </p>
-          <button className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-full hover:bg-blue-50 transition-colors duration-200">
-            리뷰 작성하기
-          </button>
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
