@@ -24,7 +24,8 @@ const HomePage: React.FC<HomePageProps> = ({ onPageChange }) => {
     <div className="min-h-screen bg-gray-50">
       {/* 히어로 슬라이더 */}
       <section className="mb-12">
-        <HeroSlider />
+        {/* ✅ onNavigate 전달 (search/rental/reviews로 이동) */}
+        <HeroSlider onNavigate={(p) => onPageChange(p)} />
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
