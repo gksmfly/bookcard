@@ -8,22 +8,19 @@ interface BookCardProps {
 }
 
 const BookCard: React.FC<BookCardProps> = ({ book, onBookClick }) => {
-  // 안전한 퍼센트 계산(0~100 클램프)
   const percent =
     Math.max(0, Math.min(100, (book.availableCopies / Math.max(1, book.totalCopies)) * 100));
 
   return (
     <div
-      // ⬇️ 카드 라운드 제거(이미지가 확실히 직사각형으로 보이도록)
       className="bg-white shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer group transform hover:-translate-y-1"
       onClick={() => onBookClick?.(book)}
     >
-      {/* 책 커버 이미지 */}
+      {/* 책 커버 이미지 (라운드 제거) */}
       <div className="relative h-48 overflow-hidden rounded-none">
         <img
           src={book.coverImage}
           alt={book.title}
-          // ⬇️ 이미지 라운드 강제 제거
           className="w-full h-full object-cover rounded-none group-hover:scale-110 transition-transform duration-300"
           draggable={false}
         />
@@ -66,7 +63,6 @@ const BookCard: React.FC<BookCardProps> = ({ book, onBookClick }) => {
             <Users className="w-3 h-3" />
             <span>{book.reviewCount}명 평가</span>
           </div>
-
           <div className="flex items-center space-x-1">
             <Calendar className="w-3 h-3" />
             <span>{new Date(book.publishedDate).getFullYear()}</span>
@@ -79,7 +75,6 @@ const BookCard: React.FC<BookCardProps> = ({ book, onBookClick }) => {
             <span className="text-xs text-gray-500">
               재고: {book.availableCopies}/{book.totalCopies}권
             </span>
-
             <div className="w-16 bg-gray-200 rounded-full h-2">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
